@@ -240,6 +240,151 @@ $ns at 250 "finish"
 $ns run
 
 
+5)set stop 100
+set type gsm
+set minth 30
+set maxth 0
+set adaptive 1
+set flows 0
+set window 30
+set opt(wrap) 100
+set opt(srcTrace) is
+set opt(dstTrace) bs2
+set bwDL(gsm) 9600
+set propDL(gsm) .500
+set ns [new Simulator]
+set tf [open gsm.tr w]
+$ns trace-all $tf
+set nodes(is) [$ns node]
+set nodes(ms) [$ns node]
+set nodes(bs1) [$ns node]
+set nodes(bs2) [$ns node]
+set nodes(lp) [$ns node]
+proc cell_topo {} {
+global ns nodes
+$ns duplex-link $nodes(lp) $nodes(bs1) 3Mbps 10ms DropTail
+$ns duplex-link $nodes(bs1) $nodes(ms) 1 1 RED
+$ns duplex-link $nodes(ms) $nodes(bs2) 1 1 RED
+$ns duplex-link $nodes(bs2) $nodes(is) 3Mbps 10ms DropTail
+puts "GSM Cell Topology"
+}
+proc set_link_params {t} {
+global ns nodes bwDL propDL
+$ns bandwidth $nodes(bs1) $nodes(ms) $bwDL($t) duplex
+$ns bandwidth $nodes(bs2) $nodes(ms) $bwDL($t) duplex
+$ns delay $nodes(bs1) $nodes(ms) $propDL($t) duplex
+$ns delay $nodes(bs2) $nodes(ms) $propDL($t) duplex
+$ns queue-limit $nodes(bs1) $nodes(ms) 10
+$ns queue-limit $nodes(bs2) $nodes(ms) 10
+}
+Queue/RED set adaptive_ $adaptive
+Queue/RED set thresh_ $minth
+Queue/RED set maxthresh_ $maxth
+Agent/TCP set window_ $window
+source web.tcl
+switch $type {
+gsm -
+cdma {cell_topo}
+}
+set_link_params $type
+$ns insert-delayer $nodes(ms) $nodes(bs1) [new Delayer]
+$ns insert-delayer $nodes(ms) $nodes(bs2) [new Delayer]
+if {$flows ==0} {
+set tcp1 [$ns create-connection TCP/Sack1 $nodes(is) TCPSink/Sack1 $nodes(lp) 0]
+set ftp1 [[set tcp1] attach-app FTP]
+$ns at 0.8 "[set ftp1] start"
+}
+proc stop {} {
+global nodes opt tf
+set wrap $opt(wrap)
+set sid [$nodes($opt(srcTrace)) id]
+set did [$nodes($opt(dstTrace)) id]
+set a "p5.tr"
+set GETRC "../../../bin/getrc"
+set RAW2XG "../../../bin/raw2xg"
+exec $GETRC -s $sid -d $did -f 0 gsm.tr | \
+$RAW2XG -s 0.01 -m $wrap -r > plot.xgr
+exec $GETRC -s $did -d $sid -f 0 gsm.tr | \
+$RAW2XG -a -s 0.01 -m $wrap >> plot.xgr
+exec xgraph -x "time" -y "packets" plot.xgr &
+exit 0
+}
+$ns at $stop "stop"
+$ns run
+
+
+6)set stop 100
+set type cdma
+set minth 30
+set maxth 0
+set adaptive 1
+set flows 0
+set window 30
+set opt(wrap) 100
+set opt(srcTrace) is
+set opt(dstTrace) bs2
+set bwDL(cdma) 384000
+set propDL(cdma) .150
+set ns [new Simulator]
+set tf [open p6.tr w]
+$ns trace-all $tf
+set nodes(is) [$ns node]
+set nodes(ms) [$ns node]
+set nodes(bs1) [$ns node]
+set nodes(bs2) [$ns node]
+set nodes(lp) [$ns node]
+proc cell_topo {} {
+global ns nodes
+$ns duplex-link $nodes(lp) $nodes(bs1) 3Mbps 10ms DropTail
+$ns duplex-link $nodes(bs1) $nodes(ms) 1 1 RED
+$ns duplex-link $nodes(ms) $nodes(bs2) 1 1 RED
+$ns duplex-link $nodes(bs2) $nodes(is) 3Mbps 10ms DropTail
+puts "cdma Cell Topolgy"
+}
+proc set_link_para {t} {
+global ns nodes bwDL propDL
+$ns bandwidth $nodes(bs1) $nodes(ms) $bwDL($t) duplex
+$ns bandwidth $nodes(bs2) $nodes(ms) $bwDL($t) duplex
+$ns delay $nodes(bs1) $nodes(ms) $propDL($t) duplex
+$ns delay $nodes(bs2) $nodes(ms) $propDL($t) duplex
+$ns queue-limit $nodes(bs1) $nodes(ms) 20
+$ns queue-limit $nodes(bs2) $nodes(ms) 20
+}
+Queue/RED set adaptive_ $adaptive
+Queue/RED set thresh_ $minth
+Queue/RED set maxthresh_ $maxth
+Agent/TCP set window_ $window
+source web.tcl
+switch $type {
+cdma {cell_topo}
+}
+set_link_para $type
+$ns insert-delayer $nodes(ms) $nodes(bs1) [new Delayer]
+$ns insert-delayer $nodes(ms) $nodes(bs2) [new Delayer]
+if {$flows ==0} {
+set tcp1 [$ns create-connection TCP/Sack1 $nodes(is) TCPSink/Sack1 $nodes(lp) 0]
+set ftp1 [[set tcp1] attach-app FTP]
+$ns at 0.8 "[set ftp1] start"
+}
+proc stop {} {
+global nodes opt tf
+set wrap $opt(wrap)
+set sid [$nodes($opt(srcTrace)) id]
+set did [$nodes($opt(dstTrace)) id]
+set a "p6.tr"
+set GETRC "../../../bin/getrc"
+set RAW2XG "../../../bin/raw2xg"
+exec $GETRC -s $sid -d $did -f 0 p6.tr | \
+$RAW2XG -s 0.01 -m $wrap -r > plot.xgr
+exec $GETRC -s $did -d $sid -f 0 p6.tr | \
+$RAW2XG -a -s 0.01 -m $wrap >> p6.xgr
+exec xgraph -x time -y packets plot.xgr &
+exit 0
+}
+$ns at $stop "stop"
+$ns run
+
+
 ------Part B------
 
 7)  import java.util.*;
@@ -373,6 +518,7 @@ public class Belmanford
  } 
  }
 
+
 9)  import java.net.*;
 import java.io.*;
 public class TCPClient
@@ -426,6 +572,7 @@ fileRead.close();
 contentRead.close();
 }
 }
+
 
 
 10)   import java.io.*; 
@@ -487,4 +634,128 @@ catch(Exception ex)
  System.out.println(ex.getMessage()); 
 } 
 } 
+}
+
+
+
+11)import java.util.*;
+import java.io.*;
+public class rsa
+{
+static int gcd(int m,int n)
+{
+while(n!=0)
+{
+int r=m%n;
+m=n;
+n=r;
+}
+return m;
+}
+public static void main(String args[])
+{
+int p=0,q=0,n=0,e=0,d=0,phi=0;
+int nummes[]=new int[100];
+int encrypted[]=new int[100];
+int decrypted[]=new int[100];
+int i=0,j=0,nofelem=0;
+Scanner sc=new Scanner(System.in);
+String message;
+System.out.println("Enter the Message to be encrypted:");
+message=sc.nextLine();
+System.out.println("Enter value of p and q\n");
+p=sc.nextInt();
+q=sc.nextInt();
+n=p*q;
+phi=(p-1)*(q-1);
+for(i=2;i<phi;i++)
+if(gcd(i,phi)==1)
+break;
+e=i;
+for(i=2;i<phi;i++)
+if((e*i-1)%phi==0)
+break;
+d=i;
+for(i=0;i<message.length();i++)
+{
+char c=message.charAt(i);
+int a=(int)c;
+nummes[i]=c-96;
+}
+nofelem=message.length();
+for(i=0;i<nofelem;i++)
+{
+encrypted[i]=1;
+for(j=0;j<e;j++)
+encrypted[i]=(encrypted[i]*nummes[i])%n;
+}
+System.out.println("\nEncrypted message\n");
+for(i=0;i<nofelem;i++)
+{
+System.out.println(encrypted[i]);
+//System.out.println((char) (encrypted[i]+96));
+}
+for(i=0;i<nofelem;i++)
+{
+decrypted[i]=1;
+for(j=0;j<d;j++)
+decrypted[i]=(decrypted[i]*encrypted[i])%n;
+}
+System.out.println("\n Decrypted messages\n");
+for(i=0;i<nofelem;i++)
+System.out.print((char) (decrypted[i]+96));
+return;
+}
+}
+
+
+12) import java.util.Scanner;
+public class Leaky {
+public static void main(String args[]){
+Scanner sc=new Scanner(System.in);
+int bucket=0,op_rate,i,n,bsize;
+System.out.println("enter number of packets");
+n=sc.nextInt();
+int pkt[]=new int[n];
+System.out.println("enter the output rate of the bucket");
+op_rate=sc.nextInt();
+System.out.println("enter the bucket size");
+bsize=sc.nextInt();
+System.out.println("enter the arriving packets(size)");
+for(i=0;i<n;i++)
+pkt[i]=sc.nextInt();
+System.out.println("\nsec\tpsize\tbucket\taccept/reject\tpkt_send");
+System.out.println("-------------------------------------------------------");
+for(i=0;i<n;i++)
+{
+System.out.print(i+1+"\t"+pkt[i]+"\t");
+if(bucket+pkt[i]<=bsize)
+{
+bucket+=pkt[i];
+System.out.println(bucket +"\t\taccept\t\t"+ min(bucket,op_rate)+"\n");
+bucket=sub(bucket,op_rate);
+}
+else
+{
+System.out.println(bucket + "\t\treject\t" + (bucket+pkt[i]-bsize) + "\t" + 
+min(bsize,op_rate) +"\n");
+bucket=bsize;
+bucket=sub(bucket,op_rate);
+}
+}
+while(bucket!=0)
+{
+System.out.print(++i +"\\t"+bucket + "\t\taccept\t\t" + min(bucket,op_rate)+"\n");
+bucket=sub(bucket,op_rate);
+}
+sc.close();
+}
+static int min(int a,int b)
+{
+return(a<b)?a:b;
+}
+static int sub(int a,int b)
+{
+return(a-b)>0?(a-b):0;
+}
 }
